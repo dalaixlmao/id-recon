@@ -34,6 +34,13 @@ coverage/
 dev.db*
 *.db
 
+# Environment files with secrets
+.env
+.env.*
+env.production
+env.development
+env.staging
+
 # Git
 .git
 .gitignore

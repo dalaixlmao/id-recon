@@ -17,6 +17,7 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "deploy": "./scripts/deploy.sh",
+    "security:check": "./scripts/security-check.sh",
     "docker:build": "docker build -t identity-reconciliation .",
     "docker:run": "docker run -p 3000:3000 --env-file .env identity-reconciliation"
   },

@@ -13,6 +13,9 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
+# Make scripts executable
+RUN chmod +x scripts/deploy.sh
+
 # Generate Prisma client
 RUN npx prisma generate
 
@@ -41,4 +44,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application with production setup
-CMD ["npm", "run", "deploy"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
