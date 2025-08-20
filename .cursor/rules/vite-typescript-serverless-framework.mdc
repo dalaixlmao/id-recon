@@ -1,0 +1,143 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Dependency Management and Project Architecture Rules
+
+## No New Dependencies Without Explicit Approval
+
+You must NOT install or suggest installing any new npm dependencies beyond what is already listed in the package.json file without EXPLICIT user approval.
+
+## Rule Details
+
+This rule ensures that the project maintains dependency hygiene and prevents unnecessary package bloat.
+
+### Dependency Installation Restrictions
+
+The AI should:
+
+1. **NEVER automatically install new dependencies** even in "agentic" or "yolo" full-automatic mode
+2. **ALWAYS check package.json first** before suggesting any dependency
+3. **REQUIRE explicit confirmation** before proceeding with any dependency installation
+4. **PRIORITIZE using existing dependencies** over suggesting new ones
+
+### Implementation Notes
+
+When a feature requires functionality that might typically use a new dependency:
+
+1. **First attempt to implement using existing dependencies**
+   - Check package.json for similar functionality
+   - Look for native browser APIs or standard libraries
+   - Consider implementing minimal required functionality manually
+
+2. **If a new dependency seems necessary**:
+   - Present a detailed analysis of why it's needed
+   - Show what existing packages were considered
+   - Provide size and maintenance metrics
+   - Ask: "Do you want me to install [package]? This will modify your package.json. (Yes/No)"
+   - Proceed ONLY on explicit "Yes"
+
+3. **For TypeScript types**:
+   - Check if types are already included in the dependency
+   - Only suggest @types/* packages if absolutely necessary
+
+## Allowed Dependencies
+
+The following dependencies are already available in the project:
+
+### UI & Components
+- Radix UI components (`@radix-ui/react-*`)
+- Class variance authority, clsx, tailwind-merge (for styling)
+- Embla carousel, Framer Motion (animations)
+- Lucide React (icons)
+- React Day Picker, Date-fns (date handling)
+- Recharts (charts)
+- Sonner (toast notifications)
+- Vaul (drawers)
+
+### State & Forms
+- React Hook Form + Resolvers
+- Zod (validation)
+- Tanstack React Query
+- Tanstack React Table
+
+### Core
+- React & React DOM
+- React Router DOM
+- Firebase & Vertex AI
+- TypeScript
+
+### Development
+- Vite
+- ESLint
+- Tailwind CSS
+- TypeScript
+- SWC
+
+## Serverless Framework Architecture
+
+This project follows a serverless architecture pattern using Firebase backend services, eliminating the need for managing server infrastructure.
+
+### Firebase Cloud Functions
+- Use TypeScript for all Cloud Functions implementations
+- Structure Cloud Functions in a `/functions` directory with the following organization:
+  - `/src` - TypeScript source files
+  - `/lib` - Shared utilities and middleware
+  - `/auth` - Authentication-related functions
+  - `/api` - API endpoints and webhooks
+  - `/triggers` - Firestore, Storage, and Auth triggers
+- Follow the principle of one responsibility per function
+- Implement proper error handling and logging
+- Use environment variables for configuration
+- Test Cloud Functions locally before deployment
+
+### Firebase Tasks
+- Use Firebase Tasks for CPU-intensive or long-running operations
+- Structure task handlers similar to Cloud Functions
+- Implement proper retry mechanisms and error handling
+- Use task queues for operations that can be processed asynchronously
+- Ensure idempotency for all task operations
+- Monitor task execution with proper logging
+
+### Firebase Scheduler
+- Use Cloud Scheduler for periodic jobs and cron tasks
+- Implement scheduled tasks that trigger Cloud Functions or Firebase Tasks
+- Define clear job schedules using cron syntax
+- Document the purpose and expected behavior of each scheduled job
+- Implement monitoring and alerting for scheduled job failures
+- Use retry policies appropriate to each scheduled task
+
+### Serverless Best Practices
+- Keep functions small and focused on a single responsibility
+- Use cold start optimization techniques
+- Implement proper timeout and memory allocation
+- Use appropriate security rules for Firestore and Storage
+- Follow the principle of least privilege for service accounts
+- Implement proper error handling and logging for all serverless components
+- Use environment-specific configuration for dev, staging, and production
+
+## Examples of Enforcing This Rule
+
+### Bad Example
+```
+User: "I need to add form validation"
+AI: *installs formik without asking*
+```
+
+### Good Example
+```
+User: "I need to add form validation"
+AI: "I see you already have react-hook-form and zod installed, which provide excellent form validation capabilities. I'll implement the validation using these existing dependencies."
+```
+
+### When New Dependency Might Be Needed
+```
+User: "I need to add PDF generation"
+AI: "I don't see any PDF generation libraries in your dependencies. We could implement this using:
+
+1. Existing dependencies and canvas API (limited features)
+2. Add a dedicated PDF library like react-pdf (recommended for complex PDFs)
+
+Would you like me to implement option 1 with existing dependencies or would you prefer to install react-pdf? This will modify your package.json. Please respond with your preference."
+```

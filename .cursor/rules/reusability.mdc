@@ -1,0 +1,612 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Code Reusability and Component Discovery Rules
+
+You must enforce comprehensive code reusability practices to maximize code reuse, minimize duplication, and maintain a DRY (Don't Repeat Yourself) codebase.
+
+## Rule Details
+
+This rule ensures that before creating any new component, function, or utility, the AI systematically searches for existing reusable code and only creates new implementations when absolutely necessary.
+
+## Core Reusability Principles
+
+### 1. Discovery Before Creation
+- **ALWAYS search existing codebase** before implementing new functionality
+- **Check for similar patterns** that can be extended or adapted
+- **Identify reusable components** that can be composed together
+- **Look for utility functions** that provide similar functionality
+
+### 2. Composition Over Creation
+- **Combine existing components** to create new functionality
+- **Extend existing utilities** rather than writing from scratch
+- **Use higher-order components** and render props patterns
+- **Leverage custom hooks** for shared stateful logic
+
+### 3. Abstraction Levels
+- **Generic utilities** for common operations
+- **Configurable components** that accept props for customization
+- **Template patterns** for similar UI structures
+- **Service abstractions** for external integrations
+
+## Systematic Discovery Process
+
+### Phase 1: Codebase Analysis
+Before implementing any feature, perform these searches:
+
+#### Component Discovery
+```bash
+# Search for similar components
+grep -r "component.*[ComponentName]" src/
+grep -r "function.*[FunctionName]" src/
+grep -r "const.*[VariableName]" src/
+```
+
+#### Pattern Discovery
+```bash
+# Search for similar patterns
+grep -r "useState.*[StatePattern]" src/
+grep -r "useEffect.*[EffectPattern]" src/
+grep -r "interface.*[InterfacePattern]" src/
+```
+
+#### Utility Discovery
+```bash
+# Search for utility functions
+find src/ -name "*.utils.ts" -o -name "*.helpers.ts"
+grep -r "export.*function" src/utils/
+grep -r "export.*const" src/lib/
+```
+
+### Phase 2: Semantic Search
+Use semantic search to find conceptually similar code:
+- Search for functionality descriptions
+- Look for business logic patterns
+- Find UI interaction patterns
+- Identify data transformation logic
+
+### Phase 3: Dependency Analysis
+Check existing dependencies for functionality:
+- Review package.json for relevant libraries
+- Check if existing dependencies provide needed features
+- Look for utility functions in installed packages
+
+## Reusability Patterns
+
+### 1. Component Composition Patterns
+
+#### Base + Variant Pattern
+```typescript
+// ✅ Good - Reusable base with variants
+interface BaseButtonProps {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+}
+
+const BaseButton: React.FC<BaseButtonProps> = ({ 
+  children, 
+  onClick, 
+  disabled, 
+  className 
+}) => (
+  <button 
+    onClick={onClick} 
+    disabled={disabled} 
+    className={cn("base-button-styles", className)}
+  >
+    {children}
+  </button>
+);
+
+// Variants reuse the base
+const PrimaryButton = (props: BaseButtonProps) => (
+  <BaseButton {...props} className={cn("primary-styles", props.className)} />
+);
+
+const SecondaryButton = (props: BaseButtonProps) => (
+  <BaseButton {...props} className={cn("secondary-styles", props.className)} />
+);
+```
+
+#### Compound Component Pattern
+```typescript
+// ✅ Good - Reusable compound components
+const Card = {
+  Root: ({ children, className }: CardProps) => (
+    <div className={cn("card-base", className)}>{children}</div>
+  ),
+  Header: ({ children, className }: CardHeaderProps) => (
+    <div className={cn("card-header", className)}>{children}</div>
+  ),
+  Content: ({ children, className }: CardContentProps) => (
+    <div className={cn("card-content", className)}>{children}</div>
+  ),
+  Footer: ({ children, className }: CardFooterProps) => (
+    <div className={cn("card-footer", className)}>{children}</div>
+  )
+};
+
+// Usage - highly reusable
+<Card.Root>
+  <Card.Header>Title</Card.Header>
+  <Card.Content>Content</Card.Content>
+  <Card.Footer>Actions</Card.Footer>
+</Card.Root>
+```
+
+### 2. Hook Reusability Patterns
+
+#### Generic Data Fetching Hook
+```typescript
+// ✅ Good - Reusable data fetching pattern
+interface UseApiOptions<T> {
+  endpoint: string;
+  transform?: (data: any) => T;
+  dependencies?: any[];
+  enabled?: boolean;
+}
+
+const useApi = <T>({ 
+  endpoint, 
+  transform, 
+  dependencies = [], 
+  enabled = true 
+}: UseApiOptions<T>) => {
+  return useQuery({
+    queryKey: [endpoint, ...dependencies],
+    queryFn: async () => {
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      return transform ? transform(data) : data;
+    },
+    enabled
+  });
+};
+
+// Reuse for specific entities
+const useUsers = () => useApi<User[]>({ 
+  endpoint: '/api/users',
+  transform: (data) => data.map(transformUser)
+});
+
+const useUser = (id: string) => useApi<User>({ 
+  endpoint: `/api/users/${id}`,
+  dependencies: [id],
+  enabled: !!id
+});
+```
+
+#### Generic Form Hook
+```typescript
+// ✅ Good - Reusable form logic
+interface UseFormOptions<T> {
+  initialValues: T;
+  validationSchema?: ZodSchema<T>;
+  onSubmit: (values: T) => Promise<void> | void;
+}
+
+const useGenericForm = <T extends Record<string, any>>({
+  initialValues,
+  validationSchema,
+  onSubmit
+}: UseFormOptions<T>) => {
+  const form = useForm<T>({
+    defaultValues: initialValues,
+    resolver: validationSchema ? zodResolver(validationSchema) : undefined
+  });
+
+  const handleSubmit = form.handleSubmit(async (data) => {
+    try {
+      await onSubmit(data);
+    } catch (error) {
+      // Handle error
+    }
+  });
+
+  return {
+    form,
+    handleSubmit,
+    isSubmitting: form.formState.isSubmitting,
+    errors: form.formState.errors
+  };
+};
+```
+
+### 3. Utility Function Patterns
+
+#### Generic Array Utilities
+```typescript
+// ✅ Good - Reusable array operations
+export const arrayUtils = {
+  groupBy: <T, K extends keyof T>(array: T[], key: K): Record<string, T[]> => {
+    return array.reduce((groups, item) => {
+      const group = String(item[key]);
+      groups[group] = groups[group] || [];
+      groups[group].push(item);
+      return groups;
+    }, {} as Record<string, T[]>);
+  },
+
+  sortBy: <T>(array: T[], key: keyof T, direction: 'asc' | 'desc' = 'asc'): T[] => {
+    return [...array].sort((a, b) => {
+      const aVal = a[key];
+      const bVal = b[key];
+      const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return direction === 'asc' ? comparison : -comparison;
+    });
+  },
+
+  unique: <T>(array: T[], key?: keyof T): T[] => {
+    if (!key) return [...new Set(array)];
+    const seen = new Set();
+    return array.filter(item => {
+      const value = item[key];
+      if (seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    });
+  }
+};
+```
+
+#### Generic Validation Utilities
+```typescript
+// ✅ Good - Reusable validation patterns
+export const validationUtils = {
+  createRequiredRule: (message?: string) => 
+    z.string().min(1, message || 'This field is required'),
+
+  createEmailRule: (message?: string) => 
+    z.string().email(message || 'Invalid email format'),
+
+  createMinLengthRule: (min: number, message?: string) => 
+    z.string().min(min, message || `Minimum ${min} characters required`),
+
+  createPasswordRule: () => 
+    z.string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[A-Z]/, 'Password must contain uppercase letter')
+      .regex(/[a-z]/, 'Password must contain lowercase letter')
+      .regex(/\d/, 'Password must contain number'),
+
+  createPhoneRule: () => 
+    z.string().regex(/^\+?[\d\s-()]+$/, 'Invalid phone number format')
+};
+```
+
+## Discovery Checklist
+
+Before creating any new code, systematically check:
+
+### ✅ Component Discovery Checklist
+- [ ] Search for components with similar UI patterns
+- [ ] Look for components that handle similar data types
+- [ ] Check for components with similar user interactions
+- [ ] Find components that could be extended with props
+- [ ] Identify compound components that could be reused
+- [ ] Look for layout components that match the pattern
+
+### ✅ Hook Discovery Checklist
+- [ ] Search for hooks that manage similar state
+- [ ] Look for hooks that handle similar side effects
+- [ ] Check for data fetching hooks with similar patterns
+- [ ] Find form handling hooks that could be adapted
+- [ ] Identify business logic hooks that could be extended
+- [ ] Look for utility hooks that provide similar functionality
+
+### ✅ Utility Discovery Checklist
+- [ ] Search for functions that perform similar operations
+- [ ] Look for data transformation utilities
+- [ ] Check for validation functions with similar rules
+- [ ] Find formatting utilities that could be extended
+- [ ] Identify helper functions that could be generalized
+- [ ] Look for constants that could be reused
+
+### ✅ Service Discovery Checklist
+- [ ] Search for API services with similar endpoints
+- [ ] Look for data access patterns that could be reused
+- [ ] Check for authentication/authorization utilities
+- [ ] Find error handling patterns that could be applied
+- [ ] Identify caching strategies that could be reused
+- [ ] Look for external service integrations
+
+## Reusability Enhancement Strategies
+
+### 1. Parameterization
+Convert hardcoded values to parameters:
+
+```typescript
+// ❌ Bad - Hardcoded and not reusable
+const UserCard = () => (
+  <div className="bg-white p-4 rounded-lg shadow">
+    <h3 className="text-lg font-bold">User Name</h3>
+    <p className="text-gray-600">user@example.com</p>
+  </div>
+);
+
+// ✅ Good - Parameterized and reusable
+interface CardProps {
+  title: string;
+  subtitle: string;
+  className?: string;
+  variant?: 'default' | 'compact' | 'detailed';
+}
+
+const Card: React.FC<CardProps> = ({ 
+  title, 
+  subtitle, 
+  className, 
+  variant = 'default' 
+}) => (
+  <div className={cn(
+    "bg-white rounded-lg shadow",
+    variant === 'compact' ? 'p-2' : 'p-4',
+    className
+  )}>
+    <h3 className={cn(
+      "font-bold",
+      variant === 'compact' ? 'text-sm' : 'text-lg'
+    )}>
+      {title}
+    </h3>
+    <p className="text-gray-600">{subtitle}</p>
+  </div>
+);
+```
+
+### 2. Composition Enhancement
+Make components more composable:
+
+```typescript
+// ✅ Good - Highly composable
+interface FlexProps {
+  direction?: 'row' | 'column';
+  align?: 'start' | 'center' | 'end';
+  justify?: 'start' | 'center' | 'end' | 'between' | 'around';
+  gap?: number;
+  wrap?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}
+
+const Flex: React.FC<FlexProps> = ({
+  direction = 'row',
+  align = 'start',
+  justify = 'start',
+  gap = 0,
+  wrap = false,
+  children,
+  className
+}) => (
+  <div 
+    className={cn(
+      'flex',
+      `flex-${direction}`,
+      `items-${align}`,
+      `justify-${justify}`,
+      wrap && 'flex-wrap',
+      gap > 0 && `gap-${gap}`,
+      className
+    )}
+  >
+    {children}
+  </div>
+);
+```
+
+### 3. Generic Type Enhancement
+Make utilities work with multiple types:
+
+```typescript
+// ✅ Good - Generic and reusable
+export const createApiService = <T>() => ({
+  getAll: async (): Promise<T[]> => {
+    // Generic implementation
+  },
+  
+  getById: async (id: string): Promise<T> => {
+    // Generic implementation
+  },
+  
+  create: async (data: Omit<T, 'id'>): Promise<T> => {
+    // Generic implementation
+  },
+  
+  update: async (id: string, data: Partial<T>): Promise<T> => {
+    // Generic implementation
+  },
+  
+  delete: async (id: string): Promise<void> => {
+    // Generic implementation
+  }
+});
+
+// Usage
+const userService = createApiService<User>();
+const productService = createApiService<Product>();
+```
+
+## Anti-Patterns to Avoid
+
+### ❌ Copy-Paste Programming
+```typescript
+// Bad - Duplicated code
+const UserList = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetch('/api/users')
+      .then(res => res.json())
+      .then(setUsers)
+      .finally(() => setLoading(false));
+  }, []);
+  
+  return <div>{/* render users */}</div>;
+};
+
+const ProductList = () => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(setProducts)
+      .finally(() => setLoading(false));
+  }, []);
+  
+  return <div>{/* render products */}</div>;
+};
+```
+
+### ❌ Over-Specific Components
+```typescript
+// Bad - Too specific, not reusable
+const RedSubmitButton = () => (
+  <button className="bg-red-500 text-white px-4 py-2 rounded">
+    Submit Form
+  </button>
+);
+```
+
+### ❌ Hardcoded Values
+```typescript
+// Bad - Hardcoded, not configurable
+const Modal = ({ children }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div className="bg-white p-6 rounded-lg w-96 max-h-96 overflow-auto">
+      {children}
+    </div>
+  </div>
+);
+```
+
+## Implementation Workflow
+
+### Step 1: Discovery Phase
+1. **Semantic Search**: Search for similar functionality
+2. **Pattern Analysis**: Identify existing patterns that could be extended
+3. **Dependency Check**: Review existing libraries and utilities
+4. **Component Inventory**: List all potentially reusable components
+
+### Step 2: Reusability Assessment
+1. **Exact Match**: Can existing code be used as-is?
+2. **Extension**: Can existing code be extended with props/parameters?
+3. **Composition**: Can existing components be combined?
+4. **Adaptation**: Can existing patterns be adapted with minimal changes?
+
+### Step 3: Implementation Decision
+1. **Reuse**: Use existing code with minimal or no changes
+2. **Extend**: Add props/parameters to existing code
+3. **Compose**: Combine existing components/utilities
+4. **Adapt**: Modify existing patterns for new use case
+5. **Create**: Build new code only if no reusable options exist
+
+### Step 4: Enhancement for Future Reuse
+1. **Parameterize**: Make new code configurable
+2. **Generalize**: Remove specific business logic
+3. **Document**: Add clear usage examples
+4. **Test**: Ensure code works in multiple contexts
+
+## Documentation Requirements
+
+### Component Documentation
+```typescript
+/**
+ * Generic data table component for displaying tabular data
+ * 
+ * @example Basic usage
+ * ```tsx
+ * <DataTable 
+ *   data={users} 
+ *   columns={userColumns}
+ *   onRowClick={(user) => navigate(`/users/${user.id}`)}
+ * />
+ * ```
+ * 
+ * @example With custom styling
+ * ```tsx
+ * <DataTable 
+ *   data={products} 
+ *   columns={productColumns}
+ *   className="custom-table"
+ *   variant="compact"
+ * />
+ * ```
+ */
+interface DataTableProps<T> {
+  data: T[];
+  columns: Column<T>[];
+  onRowClick?: (item: T) => void;
+  className?: string;
+  variant?: 'default' | 'compact' | 'detailed';
+}
+```
+
+### Utility Documentation
+```typescript
+/**
+ * Generic debounce utility for delaying function execution
+ * 
+ * @param func - Function to debounce
+ * @param delay - Delay in milliseconds
+ * @returns Debounced function
+ * 
+ * @example
+ * ```typescript
+ * const debouncedSearch = debounce((query: string) => {
+ *   searchAPI(query);
+ * }, 300);
+ * ```
+ */
+export const debounce = <T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+): ((...args: Parameters<T>) => void) => {
+  // Implementation
+};
+```
+
+## Quality Metrics
+
+### Reusability Score
+Track these metrics for each component/utility:
+- **Usage Count**: How many places use this code
+- **Parameterization**: How configurable is the code
+- **Composition**: How well does it work with other components
+- **Generalization**: How broadly applicable is the code
+
+### Code Duplication Detection
+- Use tools to detect similar code patterns
+- Regularly audit for copy-paste programming
+- Refactor duplicated code into reusable utilities
+- Maintain a registry of reusable components
+
+## Enforcement Process
+
+### Before Creating New Code
+1. **Search Phase**: Perform comprehensive search for existing solutions
+2. **Analysis Phase**: Evaluate reusability of found components/utilities
+3. **Decision Phase**: Choose reuse, extend, compose, or create
+4. **Documentation Phase**: Document the decision and rationale
+
+### Code Review Checklist
+- [ ] Was existing code searched before creating new code?
+- [ ] Could existing components be reused or extended?
+- [ ] Is the new code parameterized for future reuse?
+- [ ] Are there opportunities to extract reusable utilities?
+- [ ] Is the code documented with usage examples?
+- [ ] Can this code be composed with existing components?
+
+### Refactoring Triggers
+- When similar code appears in 3+ places
+- When components have similar structure but different styling
+- When utilities perform similar operations on different data types
+- When business logic is repeated across components
+
+Remember: The goal is not just to avoid duplication, but to create a library of reusable, composable, and well-documented components and utilities that accelerate development and maintain consistency across the application.

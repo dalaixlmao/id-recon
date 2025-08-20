@@ -1,0 +1,623 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# React Query State Management Rules
+
+You must follow these comprehensive rules for state management using React Query (@tanstack/react-query) as both a server-state and client-state management solution.
+
+## Rule Overview
+
+This rule establishes React Query as the primary state management solution, distinguishing between server-state and client-state management while providing patterns for both use cases.
+
+## Core Principles
+
+### 1. State Classification
+- **Server State**: Data that originates from and is synchronized with a server (API responses, cached data)
+- **Client State**: Data that exists only on the client (UI state, form state, temporary data)
+- **Global Client State**: Client state that needs to be shared across multiple components
+
+### 2. React Query as Primary Solution
+- Use React Query for ALL server-state management
+- Use React Query for global client-state when appropriate
+- Only use additional state management libraries for complex synchronous client-only state
+- Prefer React Query over Redux, Zustand, or MobX for most use cases
+
+## Implementation Guidelines
+
+### 1. QueryClient Setup
+
+#### Required Setup Pattern
+```typescript
+// src/lib/queryClient.ts
+import { QueryClient } from '@tanstack/react-query';
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
+      retry: (failureCount, error) => {
+        // Custom retry logic based on error type
+        if (error?.status === 404) return false;
+        return failureCount < 3;
+      },
+      refetchOnWindowFocus: false,
+      refetchOnMount: true,
+      refetchOnReconnect: true,
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
+```
+
+#### App Provider Setup
+```typescript
+// src/App.tsx or main.tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <YourAppComponents />
+      {process.env.NODE_ENV === 'development' && (
+        <ReactQueryDevtools initialIsOpen={false} />
+      )}
+    </QueryClientProvider>
+  );
+}
+```
+
+### 2. Server State Management
+
+#### Query Patterns
+```typescript
+// services/api.ts - API service layer
+export class ApiService {
+  private static baseURL = process.env.VITE_API_URL || '/api';
+  
+  static async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      ...options,
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+    
+    return response.json();
+  }
+}
+
+// hooks/api/useUsers.ts - Query hooks
+export const useUsers = () => {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: () => ApiService.request<User[]>('/users'),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+};
+
+export const useUser = (userId: string) => {
+  return useQuery({
+    queryKey: ['users', userId],
+    queryFn: () => ApiService.request<User>(`/users/${userId}`),
+    enabled: !!userId,
+  });
+};
+```
+
+#### Mutation Patterns
+```typescript
+// hooks/api/useUserMutations.ts
+export const useCreateUser = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (userData: CreateUserData) =>
+      ApiService.request<User>('/users', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      }),
+    onSuccess: (newUser) => {
+      // Invalidate and refetch users list
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+      // Optimistically update cache
+      queryClient.setQueryData(['users', newUser.id], newUser);
+    },
+    onError: (error) => {
+      // Handle error (toast notification, etc.)
+      console.error('Failed to create user:', error);
+    },
+  });
+};
+
+export const useUpdateUser = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ userId, userData }: { userId: string; userData: Partial<User> }) =>
+      ApiService.request<User>(`/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify(userData),
+      }),
+    onMutate: async ({ userId, userData }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['users', userId] });
+      
+      // Snapshot previous value
+      const previousUser = queryClient.getQueryData(['users', userId]);
+      
+      // Optimistically update
+      queryClient.setQueryData(['users', userId], (old: User) => ({
+        ...old,
+        ...userData,
+      }));
+      
+      return { previousUser };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousUser) {
+        queryClient.setQueryData(['users', variables.userId], context.previousUser);
+      }
+    },
+    onSettled: (data, error, variables) => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ['users', variables.userId] });
+    },
+  });
+};
+```
+
+### 3. Global Client State Management
+
+#### Custom Global State Hook Pattern
+```typescript
+// hooks/state/createGlobalState.ts
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+export function createGlobalState<T>(
+  queryKey: string,
+  initialData: T | null = null,
+) {
+  return function useGlobalState() {
+    const queryClient = useQueryClient();
+
+    const { data } = useQuery({
+      queryKey: [queryKey],
+      queryFn: () => Promise.resolve(initialData),
+      staleTime: Infinity, // Never stale for client state
+      gcTime: Infinity, // Never garbage collect
+      refetchInterval: false,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchIntervalInBackground: false,
+    });
+
+    const setData = (newData: Partial<T> | ((prev: T) => T)) => {
+      queryClient.setQueryData([queryKey], (oldData: T) => {
+        if (typeof newData === 'function') {
+          return newData(oldData);
+        }
+        return { ...oldData, ...newData };
+      });
+    };
+
+    const resetData = () => {
+      queryClient.setQueryData([queryKey], initialData);
+    };
+
+    const clearData = () => {
+      queryClient.removeQueries({ queryKey: [queryKey] });
+    };
+
+    return { 
+      data: data as T, 
+      setData, 
+      resetData, 
+      clearData 
+    };
+  };
+}
+```
+
+#### Global State Implementation Examples
+```typescript
+// hooks/state/useAppState.ts
+interface AppState {
+  theme: 'light' | 'dark' | 'system';
+  sidebarCollapsed: boolean;
+  notifications: Notification[];
+  currentUser: User | null;
+}
+
+export const useAppState = createGlobalState<AppState>('appState', {
+  theme: 'system',
+  sidebarCollapsed: false,
+  notifications: [],
+  currentUser: null,
+});
+
+// hooks/state/useUserPreferences.ts
+interface UserPreferences {
+  language: string;
+  timezone: string;
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+}
+
+export const useUserPreferences = createGlobalState<UserPreferences>('userPreferences', {
+  language: 'en',
+  timezone: 'UTC',
+  emailNotifications: true,
+  pushNotifications: false,
+});
+
+// hooks/state/useFormState.ts - For complex form state
+interface FormState {
+  currentStep: number;
+  formData: Record<string, any>;
+  errors: Record<string, string>;
+  isSubmitting: boolean;
+}
+
+export const useFormState = createGlobalState<FormState>('formState', {
+  currentStep: 1,
+  formData: {},
+  errors: {},
+  isSubmitting: false,
+});
+```
+
+### 4. Query Key Management
+
+#### Query Key Factory Pattern
+```typescript
+// lib/queryKeys.ts
+export const queryKeys = {
+  // Users
+  users: {
+    all: ['users'] as const,
+    lists: () => [...queryKeys.users.all, 'list'] as const,
+    list: (filters: string) => [...queryKeys.users.lists(), { filters }] as const,
+    details: () => [...queryKeys.users.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.users.details(), id] as const,
+  },
+  
+  // Posts
+  posts: {
+    all: ['posts'] as const,
+    lists: () => [...queryKeys.posts.all, 'list'] as const,
+    list: (filters: string) => [...queryKeys.posts.lists(), { filters }] as const,
+    details: () => [...queryKeys.posts.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.posts.details(), id] as const,
+  },
+  
+  // Global client state
+  clientState: {
+    app: ['clientState', 'app'] as const,
+    user: ['clientState', 'user'] as const,
+    form: (formId: string) => ['clientState', 'form', formId] as const,
+  },
+} as const;
+
+// Usage in hooks
+export const useUsers = (filters?: string) => {
+  return useQuery({
+    queryKey: queryKeys.users.list(filters || ''),
+    queryFn: () => ApiService.request<User[]>(`/users?${filters}`),
+  });
+};
+```
+
+### 5. Error Handling Patterns
+
+#### Global Error Boundary
+```typescript
+// components/ErrorBoundary.tsx
+import { QueryErrorResetBoundary } from '@tanstack/react-query';
+import { ErrorBoundary } from 'react-error-boundary';
+
+function ErrorFallback({ error, resetErrorBoundary }: any) {
+  return (
+    <div className="error-fallback">
+      <h2>Something went wrong:</h2>
+      <pre>{error.message}</pre>
+      <button onClick={resetErrorBoundary}>Try again</button>
+    </div>
+  );
+}
+
+export function AppErrorBoundary({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryErrorResetBoundary>
+      {({ reset }) => (
+        <ErrorBoundary
+          FallbackComponent={ErrorFallback}
+          onReset={reset}
+        >
+          {children}
+        </ErrorBoundary>
+      )}
+    </QueryErrorResetBoundary>
+  );
+}
+```
+
+#### Query Error Handling
+```typescript
+// hooks/api/useErrorHandling.ts
+export const useApiError = () => {
+  const handleError = (error: any) => {
+    if (error?.status === 401) {
+      // Handle unauthorized
+      queryClient.clear();
+      // Redirect to login
+    } else if (error?.status === 403) {
+      // Handle forbidden
+      // Show permission error
+    } else if (error?.status >= 500) {
+      // Handle server errors
+      // Show generic error message
+    }
+  };
+
+  return { handleError };
+};
+```
+
+### 6. Performance Optimization
+
+#### Selective Query Invalidation
+```typescript
+// utils/queryInvalidation.ts
+export const invalidateUserQueries = (queryClient: QueryClient, userId?: string) => {
+  if (userId) {
+    // Invalidate specific user
+    queryClient.invalidateQueries({ queryKey: ['users', userId] });
+  } else {
+    // Invalidate all user queries
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+  }
+};
+
+export const invalidateRelatedQueries = (queryClient: QueryClient, entityType: string, entityId: string) => {
+  // Invalidate all queries that might be affected by this entity change
+  queryClient.invalidateQueries({ 
+    predicate: (query) => {
+      return query.queryKey.some(key => 
+        typeof key === 'string' && key.includes(entityType)
+      );
+    }
+  });
+};
+```
+
+#### Background Refetching
+```typescript
+// hooks/api/useBackgroundSync.ts
+export const useBackgroundSync = () => {
+  const queryClient = useQueryClient();
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Refetch critical data in background
+      queryClient.refetchQueries({ 
+        queryKey: ['users', 'current'],
+        type: 'active' 
+      });
+    }, 5 * 60 * 1000); // Every 5 minutes
+    
+    return () => clearInterval(interval);
+  }, [queryClient]);
+};
+```
+
+### 7. Testing Patterns
+
+#### Query Testing Setup
+```typescript
+// test/utils/queryTestUtils.ts
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render } from '@testing-library/react';
+
+export const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      gcTime: 0,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
+
+export const renderWithQueryClient = (ui: React.ReactElement) => {
+  const testQueryClient = createTestQueryClient();
+  return render(
+    <QueryClientProvider client={testQueryClient}>
+      {ui}
+    </QueryClientProvider>
+  );
+};
+```
+
+#### Mock API Responses
+```typescript
+// test/mocks/apiMocks.ts
+export const mockApiResponse = <T>(data: T, delay = 0) => {
+  return new Promise<T>((resolve) => {
+    setTimeout(() => resolve(data), delay);
+  });
+};
+
+export const mockApiError = (status = 500, message = 'Server Error') => {
+  return Promise.reject(new Error(`${status}: ${message}`));
+};
+```
+
+## Best Practices Enforcement
+
+### 1. Query Organization
+- ✅ Group related queries in feature-based hook files
+- ✅ Use query key factories for consistent key management
+- ✅ Implement proper error handling for all queries
+- ✅ Use TypeScript for all query and mutation functions
+- ❌ Don't create queries directly in components
+- ❌ Don't use hardcoded query keys
+
+### 2. State Management Decision Tree
+```
+Is this server data? 
+├── YES → Use React Query (useQuery/useMutation)
+└── NO → Is this global client state?
+    ├── YES → Use React Query global state pattern
+    └── NO → Use local component state (useState/useReducer)
+```
+
+### 3. Performance Guidelines
+- Use `staleTime` appropriately based on data freshness requirements
+- Implement proper `gcTime` (garbage collection time) for memory management
+- Use `enabled` option for conditional queries
+- Implement optimistic updates for better UX
+- Use background refetching for critical data
+
+### 4. Error Handling Requirements
+- Always implement error boundaries for query errors
+- Provide meaningful error messages to users
+- Implement retry logic based on error types
+- Log errors appropriately for debugging
+
+### 5. Code Organization
+```
+src/
+├── hooks/
+│   ├── api/           # Server state hooks
+│   │   ├── useUsers.ts
+│   │   ├── usePosts.ts
+│   │   └── index.ts
+│   └── state/         # Client state hooks
+│       ├── useAppState.ts
+│       ├── useUserPreferences.ts
+│       └── createGlobalState.ts
+├── services/
+│   ├── api.ts         # API service layer
+│   └── queryClient.ts # Query client configuration
+├── lib/
+│   ├── queryKeys.ts   # Query key factories
+│   └── types.ts       # TypeScript types
+└── components/
+    └── ErrorBoundary.tsx
+```
+
+## Migration Strategy
+
+### From Redux/Zustand to React Query
+1. **Identify State Types**: Separate server state from client state
+2. **Migrate Server State**: Replace Redux actions/reducers with React Query hooks
+3. **Migrate Global Client State**: Use React Query global state pattern
+4. **Remove Boilerplate**: Delete unnecessary action creators, reducers, and middleware
+5. **Update Components**: Replace connect/useSelector with React Query hooks
+6. **Add Error Handling**: Implement proper error boundaries and handling
+
+### Example Migration
+```typescript
+// Before (Redux)
+const userSlice = createSlice({
+  name: 'users',
+  initialState: { users: [], loading: false, error: null },
+  reducers: {
+    fetchUsersStart: (state) => { state.loading = true; },
+    fetchUsersSuccess: (state, action) => { 
+      state.users = action.payload; 
+      state.loading = false; 
+    },
+    fetchUsersFailure: (state, action) => { 
+      state.error = action.payload; 
+      state.loading = false; 
+    },
+  },
+});
+
+// After (React Query)
+export const useUsers = () => {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: () => ApiService.request<User[]>('/users'),
+  });
+};
+```
+
+## Enforcement Checklist
+
+Before implementing any state management solution:
+
+- [ ] Determine if this is server state or client state
+- [ ] Use React Query for all server state management
+- [ ] Use React Query global state pattern for global client state
+- [ ] Implement proper error handling and boundaries
+- [ ] Use TypeScript for type safety
+- [ ] Follow query key factory patterns
+- [ ] Add appropriate tests
+- [ ] Document the state management approach
+- [ ] Consider performance implications (staleTime, gcTime)
+- [ ] Implement proper loading and error states in UI
+
+## Common Anti-Patterns to Avoid
+
+### ❌ Don't Do This
+```typescript
+// Mixing server and client state in one hook
+const useUserData = () => {
+  const [localState, setLocalState] = useState();
+  const serverData = useQuery(['users'], fetchUsers);
+  // This creates confusion about state ownership
+};
+
+// Using React Query for simple local state
+const useToggle = () => {
+  return useQuery(['toggle'], () => Promise.resolve(false));
+  // Use useState instead for simple local state
+};
+
+// Not handling loading and error states
+const UserComponent = () => {
+  const { data } = useUsers(); // Missing loading and error handling
+  return <div>{data.map(...)}</div>; // Will crash if data is undefined
+};
+```
+
+### ✅ Do This Instead
+```typescript
+// Separate concerns clearly
+const useUsers = () => useQuery(['users'], fetchUsers);
+const useUserPreferences = () => {
+  const [preferences, setPreferences] = useState(defaultPreferences);
+  return { preferences, setPreferences };
+};
+
+// Proper error and loading handling
+const UserComponent = () => {
+  const { data, isLoading, error } = useUsers();
+  
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage error={error} />;
+  if (!data) return <EmptyState />;
+  
+  return <div>{data.map(...)}</div>;
+};
+```
+
+Remember: React Query excels at server state management and can effectively replace traditional state management libraries for most applications. Use it as your primary state management solution and only add additional libraries when you have specific complex synchronous client-state requirements.

@@ -1,0 +1,26 @@
+// Development schema with SQLite
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Contact {
+  id             Int      @id @default(autoincrement())
+  phoneNumber    String?
+  email          String?
+  linkedId       Int?
+  linkPrecedence String   // "primary" or "secondary"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  // Self-referential relation for linked contacts
+  linkedContact  Contact? @relation("ContactLink", fields: [linkedId], references: [id])
+  linkedContacts Contact[] @relation("ContactLink")
+
+  @@map("contacts")
+}

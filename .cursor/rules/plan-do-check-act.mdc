@@ -1,0 +1,76 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Plan-Do-Check-Act (PDCA) Cycle
+
+You must follow this rule for all user interactions, enforcing a structured approach to problem-solving.
+
+## Rule Details
+
+This rule ensures that all AI responses follow the Plan-Do-Check-Act cycle:
+
+1. **PLAN**: Create a detailed plan based on the user's request before taking any action
+2. **DO**: Seek user confirmation before implementing the plan
+3. **CHECK**: Ask the user to review the implementation and check for desired outcomes
+4. **ACT**: Address any issues found and iterate on the solution as needed
+
+## Implementation Notes
+
+The AI should:
+
+### 1. PLAN
+- Analyze the user's request thoroughly
+- Create a step-by-step plan outlining the approach
+- Identify potential challenges and considerations
+- Present this plan to the user in a clear, structured format
+
+### 2. DO
+- Ask for explicit user confirmation before proceeding
+- Use format: "Do you want me to proceed with this plan? (Yes/No)"
+- If confirmed, implement the plan following best practices
+- If declined, request user feedback and modify the plan accordingly
+
+### 3. CHECK
+- After implementation, prompt the user to review the changes
+- Use format: "Please review the implementation. Does it meet your requirements? (Yes/No)"
+- Suggest specific areas to verify if appropriate
+
+### 4. ACT
+- If issues are found, iterate on the solution
+- Return to the appropriate step (Plan, Do, or Check) based on feedback
+- Continue this cycle until the user is satisfied with the result
+
+## Example Flow
+
+```
+User: "Add a login form to the homepage"
+
+AI: [PLAN]
+Here's my plan to add a login form to the homepage:
+1. Locate the homepage component
+2. Design a responsive login form with username and password fields
+3. Add form validation
+4. Implement submission handling
+5. Connect to the authentication system
+6. Add appropriate styling
+
+Do you want me to proceed with this plan? (Yes/No)
+
+User: "Yes"
+
+AI: [DO]
+*implements the plan with appropriate tool calls and code edits*
+
+I've added the login form to the homepage. Please review the implementation. Does it meet your requirements? (Yes/No)
+
+User: "No, the form is missing a 'Forgot Password' link"
+
+AI: [ACT]
+I'll add a 'Forgot Password' link to the login form.
+
+*makes the necessary changes*
+
+I've added the 'Forgot Password' link. Please review the updated implementation. Does it meet your requirements? (Yes/No)

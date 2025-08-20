@@ -1,0 +1,461 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Modular Code Architecture Rules
+
+You must enforce modular code principles in all implementations to ensure maintainable, scalable, and testable codebases.
+
+## Rule Details
+
+This rule ensures that all code follows modular architecture principles, promoting separation of concerns, reusability, and maintainability across the entire application.
+
+## Core Modular Principles
+
+### 1. Single Responsibility Principle (SRP)
+- Each module, function, or class should have ONE reason to change
+- Split large components/functions into smaller, focused units
+- Separate business logic from presentation logic
+- Keep data fetching separate from UI rendering
+
+### 2. Separation of Concerns
+- **UI Components**: Only handle presentation and user interaction
+- **Business Logic**: Separate into service layers or custom hooks
+- **Data Access**: Isolate API calls and data transformation
+- **State Management**: Keep state logic separate from components
+- **Utilities**: Extract reusable helper functions
+
+### 3. Dependency Inversion
+- Depend on abstractions, not concrete implementations
+- Use dependency injection patterns where appropriate
+- Create interfaces/contracts for external dependencies
+- Make modules easily testable through dependency injection
+
+## Implementation Guidelines
+
+### File and Folder Structure
+
+#### Component Organization
+```
+components/
+├── ui/                    # Reusable UI primitives
+│   ├── Button/
+│   │   ├── index.ts      # Export barrel
+│   │   ├── Button.tsx    # Component implementation
+│   │   ├── Button.types.ts
+│   │   └── Button.test.tsx
+├── features/             # Feature-specific components
+│   ├── auth/
+│   │   ├── LoginForm/
+│   │   ├── SignupForm/
+│   │   └── index.ts
+├── layout/               # Layout components
+└── shared/               # Cross-feature components
+```
+
+#### Service Layer Organization
+```
+services/
+├── api/                  # API communication
+│   ├── auth.service.ts
+│   ├── user.service.ts
+│   └── base.service.ts
+├── storage/              # Data persistence
+├── validation/           # Input validation
+└── utils/                # Pure utility functions
+```
+
+#### Hook Organization
+```
+hooks/
+├── api/                  # Data fetching hooks
+│   ├── useAuth.ts
+│   └── useUsers.ts
+├── ui/                   # UI-related hooks
+│   ├── useModal.ts
+│   └── useToast.ts
+└── business/             # Business logic hooks
+    ├── useGameLogic.ts
+    └── useScoring.ts
+```
+
+### Component Modularity Rules
+
+#### ✅ Good Modular Component
+```typescript
+// UserProfile.tsx - Focused on presentation only
+interface UserProfileProps {
+  user: User;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+export const UserProfile: React.FC<UserProfileProps> = ({ 
+  user, 
+  onEdit, 
+  onDelete 
+}) => {
+  return (
+    <Card>
+      <UserAvatar src={user.avatar} alt={user.name} />
+      <UserInfo user={user} />
+      <UserActions onEdit={onEdit} onDelete={onDelete} />
+    </Card>
+  );
+};
+
+// UserProfileContainer.tsx - Handles business logic
+export const UserProfileContainer: React.FC<{ userId: string }> = ({ 
+  userId 
+}) => {
+  const { user, updateUser, deleteUser } = useUser(userId);
+  const { showConfirmDialog } = useDialog();
+  
+  const handleEdit = () => {
+    // Edit logic
+  };
+  
+  const handleDelete = async () => {
+    const confirmed = await showConfirmDialog('Delete user?');
+    if (confirmed) {
+      await deleteUser(userId);
+    }
+  };
+  
+  return (
+    <UserProfile 
+      user={user} 
+      onEdit={handleEdit} 
+      onDelete={handleDelete} 
+    />
+  );
+};
+```
+
+#### ❌ Bad Monolithic Component
+```typescript
+// UserProfile.tsx - Doing too many things
+export const UserProfile: React.FC<{ userId: string }> = ({ userId }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showDialog, setShowDialog] = useState(false);
+  
+  // API call mixed with component
+  useEffect(() => {
+    fetch(`/api/users/${userId}`)
+      .then(res => res.json())
+      .then(setUser)
+      .finally(() => setLoading(false));
+  }, [userId]);
+  
+  // Business logic mixed with component
+  const handleDelete = async () => {
+    if (confirm('Are you sure?')) {
+      await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      // More logic...
+    }
+  };
+  
+  // Large render method with mixed concerns
+  return (
+    <div>
+      {/* Complex JSX mixing presentation and logic */}
+    </div>
+  );
+};
+```
+
+### Service Layer Modularity
+
+#### API Service Pattern
+```typescript
+// base.service.ts
+export abstract class BaseService {
+  protected async request<T>(
+    endpoint: string, 
+    options?: RequestInit
+  ): Promise<T> {
+    // Common request logic
+  }
+}
+
+// user.service.ts
+export class UserService extends BaseService {
+  async getUser(id: string): Promise<User> {
+    return this.request<User>(`/users/${id}`);
+  }
+  
+  async updateUser(id: string, data: Partial<User>): Promise<User> {
+    return this.request<User>(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+}
+
+// Export singleton instance
+export const userService = new UserService();
+```
+
+#### Custom Hook Pattern
+```typescript
+// useUser.ts - Encapsulates user-related logic
+export const useUser = (userId: string) => {
+  const queryClient = useQueryClient();
+  
+  const userQuery = useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => userService.getUser(userId)
+  });
+  
+  const updateMutation = useMutation({
+    mutationFn: (data: Partial<User>) => 
+      userService.updateUser(userId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['user', userId]);
+    }
+  });
+  
+  return {
+    user: userQuery.data,
+    isLoading: userQuery.isLoading,
+    error: userQuery.error,
+    updateUser: updateMutation.mutate,
+    isUpdating: updateMutation.isLoading
+  };
+};
+```
+
+### State Management Modularity
+
+#### Feature-Based State Slices
+```typescript
+// auth/auth.slice.ts
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
+export const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    setUser: (state, action) => {
+      state.user = action.payload;
+      state.isAuthenticated = true;
+    },
+    logout: (state) => {
+      state.user = null;
+      state.isAuthenticated = false;
+    }
+  }
+});
+
+// auth/auth.selectors.ts
+export const selectUser = (state: RootState) => state.auth.user;
+export const selectIsAuthenticated = (state: RootState) => 
+  state.auth.isAuthenticated;
+```
+
+### Utility Function Modularity
+
+#### Pure Function Utilities
+```typescript
+// utils/date.utils.ts
+export const formatDate = (date: Date, format: string): string => {
+  // Pure function - no side effects
+};
+
+export const isDateInRange = (
+  date: Date, 
+  start: Date, 
+  end: Date
+): boolean => {
+  // Pure function - predictable output
+};
+
+// utils/validation.utils.ts
+export const validateEmail = (email: string): boolean => {
+  // Single responsibility
+};
+
+export const validatePassword = (password: string): ValidationResult => {
+  // Returns structured result
+};
+```
+
+## Modular Architecture Patterns
+
+### 1. Feature-Based Architecture
+- Group related functionality together
+- Each feature should be self-contained
+- Minimize cross-feature dependencies
+- Use barrel exports for clean imports
+
+### 2. Layered Architecture
+```
+Presentation Layer (Components)
+    ↓
+Business Logic Layer (Hooks/Services)
+    ↓
+Data Access Layer (API/Storage)
+    ↓
+External Services (Firebase/APIs)
+```
+
+### 3. Plugin Architecture
+- Create extensible systems through plugins
+- Define clear interfaces for extensions
+- Allow features to be added/removed easily
+
+### 4. Micro-Frontend Approach
+- Split large applications into smaller, manageable pieces
+- Each micro-frontend owns its domain
+- Communicate through well-defined contracts
+
+## Testing Modularity
+
+### Unit Testing
+- Test each module in isolation
+- Mock external dependencies
+- Focus on single responsibility
+
+### Integration Testing
+- Test module interactions
+- Verify contracts between modules
+- Test data flow between layers
+
+### Component Testing
+- Test components with mocked dependencies
+- Verify props and event handling
+- Test different states and edge cases
+
+## Code Quality Enforcement
+
+### Import/Export Rules
+```typescript
+// ✅ Good - Barrel exports
+// components/index.ts
+export { Button } from './Button';
+export { Input } from './Input';
+export type { ButtonProps, InputProps } from './types';
+
+// ✅ Good - Named imports
+import { Button, Input } from '@/components';
+
+// ❌ Bad - Deep imports
+import { Button } from '@/components/ui/Button/Button';
+```
+
+### Dependency Rules
+- Avoid circular dependencies
+- Keep dependency graphs shallow
+- Use dependency injection for testability
+- Abstract external dependencies behind interfaces
+
+### File Size Limits
+- Components: Max 200 lines
+- Hooks: Max 100 lines
+- Utility functions: Max 50 lines
+- Services: Max 300 lines (with multiple methods)
+
+## Error Handling Modularity
+
+### Centralized Error Handling
+```typescript
+// errors/error.service.ts
+export class ErrorService {
+  static handle(error: Error, context?: string): void {
+    // Centralized error logging and handling
+  }
+}
+
+// errors/error.boundary.tsx
+export class ErrorBoundary extends Component {
+  // Modular error boundary for different app sections
+}
+```
+
+### Error Types
+```typescript
+// errors/types.ts
+export abstract class AppError extends Error {
+  abstract readonly type: string;
+  abstract readonly statusCode: number;
+}
+
+export class ValidationError extends AppError {
+  readonly type = 'VALIDATION_ERROR';
+  readonly statusCode = 400;
+}
+```
+
+## Performance Considerations
+
+### Code Splitting
+- Split code by routes
+- Split code by features
+- Lazy load heavy components
+- Use dynamic imports strategically
+
+### Bundle Optimization
+- Tree shaking friendly exports
+- Avoid importing entire libraries
+- Use barrel exports judiciously
+- Monitor bundle size per module
+
+## Documentation Requirements
+
+### Module Documentation
+- Document module purpose and responsibilities
+- Provide usage examples
+- Document public APIs
+- Maintain architectural decision records (ADRs)
+
+### Interface Documentation
+```typescript
+/**
+ * User service for managing user data operations
+ * 
+ * @example
+ * ```typescript
+ * const user = await userService.getUser('123');
+ * await userService.updateUser('123', { name: 'John' });
+ * ```
+ */
+export interface IUserService {
+  getUser(id: string): Promise<User>;
+  updateUser(id: string, data: Partial<User>): Promise<User>;
+}
+```
+
+## Enforcement Checklist
+
+Before implementing any feature, ensure:
+
+- [ ] Single responsibility is maintained
+- [ ] Dependencies are properly abstracted
+- [ ] Components are focused on presentation
+- [ ] Business logic is separated into services/hooks
+- [ ] State management is feature-based
+- [ ] Utilities are pure functions
+- [ ] Error handling is centralized
+- [ ] Code is easily testable
+- [ ] Imports/exports follow conventions
+- [ ] Documentation is provided
+
+## Migration Strategy
+
+When refactoring existing monolithic code:
+
+1. **Identify Responsibilities**: List all things the code does
+2. **Extract Pure Functions**: Move utilities to separate modules
+3. **Separate Data Logic**: Extract API calls and data transformation
+4. **Create Custom Hooks**: Move stateful logic to hooks
+5. **Split Components**: Break large components into smaller ones
+6. **Add Tests**: Ensure each module is properly tested
+7. **Update Imports**: Use barrel exports and clean import paths
+
+Remember: Modular code is not just about file organization—it's about creating clear boundaries, reducing coupling, and increasing cohesion throughout your application.

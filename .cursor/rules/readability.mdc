@@ -1,0 +1,831 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Code Readability Rules
+
+You must enforce code readability principles in all implementations to ensure maintainable, understandable, and professional codebases.
+
+## Rule Details
+
+This rule ensures that all code follows readability best practices, making it easy for developers to understand, maintain, and collaborate on the codebase. Readable code reduces bugs, speeds up development, and improves team productivity.
+
+## Core Readability Principles
+
+### 1. Clear and Meaningful Naming
+- Use descriptive, intention-revealing names
+- Avoid abbreviations and cryptic names
+- Use consistent naming conventions
+- Make names searchable and pronounceable
+
+### 2. Consistent Formatting
+- Follow established formatting standards
+- Use consistent indentation and spacing
+- Maintain consistent code structure
+- Apply formatting rules uniformly across the codebase
+
+### 3. Logical Code Organization
+- Group related functionality together
+- Follow single responsibility principle
+- Use clear separation of concerns
+- Maintain consistent file and folder structure
+
+### 4. Comprehensive Documentation
+- Write self-documenting code
+- Add comments for complex logic
+- Maintain up-to-date documentation
+- Use clear commit messages
+
+## Naming Conventions
+
+### Variables and Functions
+
+#### ✅ Good Examples
+```typescript
+// Clear, descriptive names
+const userAuthenticationToken = generateToken();
+const isUserLoggedIn = checkAuthStatus();
+const calculateTotalPrice = (items: CartItem[]) => { ... };
+
+// Boolean variables with clear intent
+const hasPermission = user.role === 'admin';
+const isFormValid = validateForm(formData);
+const canEditProfile = user.id === currentUser.id;
+
+// Arrays and collections
+const activeUsers = users.filter(user => user.isActive);
+const pendingOrders = orders.filter(order => order.status === 'pending');
+const validationErrors = validateInput(data);
+```
+
+#### ❌ Bad Examples
+```typescript
+// Cryptic, abbreviated names
+const usr = getUsr();
+const chkAuth = () => { ... };
+const calc = (itms) => { ... };
+
+// Unclear boolean names
+const flag = true;
+const check = validate();
+const status = user.role === 'admin';
+
+// Generic, meaningless names
+const data = fetchData();
+const result = process(input);
+const temp = getValue();
+```
+
+### Components and Classes
+
+#### ✅ Good Examples
+```typescript
+// React Components - PascalCase with descriptive names
+const UserProfileCard: React.FC<UserProfileCardProps> = ({ user }) => { ... };
+const NavigationMenu: React.FC = () => { ... };
+const ProductListingGrid: React.FC<ProductListingProps> = ({ products }) => { ... };
+
+// Classes - PascalCase with clear purpose
+class UserAuthenticationService {
+  async authenticateUser(credentials: LoginCredentials): Promise<User> { ... }
+}
+
+class PaymentProcessor {
+  processPayment(amount: number, method: PaymentMethod): Promise<PaymentResult> { ... }
+}
+```
+
+#### ❌ Bad Examples
+```typescript
+// Vague or abbreviated names
+const Card: React.FC = () => { ... };
+const Menu: React.FC = () => { ... };
+const List: React.FC = () => { ... };
+
+// Generic class names
+class Service {
+  process(data: any): any { ... }
+}
+
+class Handler {
+  handle(input: unknown): void { ... }
+}
+```
+
+### Constants and Enums
+
+#### ✅ Good Examples
+```typescript
+// Constants - SCREAMING_SNAKE_CASE
+const MAX_RETRY_ATTEMPTS = 3;
+const API_BASE_URL = 'https://api.example.com';
+const DEFAULT_TIMEOUT_DURATION = 5000;
+
+// Enums - PascalCase with descriptive values
+enum UserRole {
+  ADMINISTRATOR = 'administrator',
+  MODERATOR = 'moderator',
+  REGULAR_USER = 'regular_user',
+  GUEST = 'guest'
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT = 'pending_payment',
+  PROCESSING = 'processing',
+  SHIPPED = 'shipped',
+  DELIVERED = 'delivered',
+  CANCELLED = 'cancelled'
+}
+```
+
+### File and Directory Names
+
+#### ✅ Good Examples
+```
+components/
+├── user-profile/
+│   ├── UserProfile.tsx
+│   ├── UserProfile.types.ts
+│   ├── UserProfile.test.tsx
+│   └── index.ts
+├── navigation/
+│   ├── NavigationMenu.tsx
+│   ├── NavigationItem.tsx
+│   └── index.ts
+services/
+├── authentication.service.ts
+├── payment-processing.service.ts
+└── user-management.service.ts
+```
+
+## Code Structure and Formatting
+
+### Function Structure
+
+#### ✅ Good Examples
+```typescript
+// Clear function signature with descriptive parameters
+async function processUserRegistration(
+  userData: UserRegistrationData,
+  options: RegistrationOptions = {}
+): Promise<RegistrationResult> {
+  // Early returns for validation
+  if (!userData.email || !userData.password) {
+    throw new ValidationError('Email and password are required');
+  }
+
+  // Clear variable declarations
+  const hashedPassword = await hashPassword(userData.password);
+  const userProfile = createUserProfile(userData);
+  
+  // Logical grouping of operations
+  try {
+    const newUser = await createUser({
+      ...userProfile,
+      password: hashedPassword
+    });
+    
+    await sendWelcomeEmail(newUser.email);
+    await logUserRegistration(newUser.id);
+    
+    return {
+      success: true,
+      user: newUser,
+      message: 'Registration completed successfully'
+    };
+  } catch (error) {
+    await logRegistrationError(error, userData.email);
+    throw new RegistrationError('Failed to complete registration');
+  }
+}
+```
+
+#### ❌ Bad Examples
+```typescript
+// Poor structure and naming
+async function proc(d: any, o?: any): Promise<any> {
+  if (!d.e || !d.p) throw new Error('Invalid');
+  const h = await hash(d.p);
+  const u = create(d);
+  try {
+    const n = await createUser({...u, password: h});
+    await send(n.e);
+    await log(n.i);
+    return {s: true, u: n, m: 'Done'};
+  } catch (e) {
+    await logErr(e, d.e);
+    throw new Error('Failed');
+  }
+}
+```
+
+### Component Structure
+
+#### ✅ Good Examples
+```typescript
+interface UserProfileCardProps {
+  user: User;
+  showEditButton?: boolean;
+  onEdit?: (userId: string) => void;
+  onDelete?: (userId: string) => void;
+}
+
+export const UserProfileCard: React.FC<UserProfileCardProps> = ({
+  user,
+  showEditButton = true,
+  onEdit,
+  onDelete
+}) => {
+  // Hooks at the top
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { hasPermission } = useAuth();
+  
+  // Event handlers grouped together
+  const handleToggleExpanded = useCallback(() => {
+    setIsExpanded(prev => !prev);
+  }, []);
+  
+  const handleEditClick = useCallback(() => {
+    onEdit?.(user.id);
+  }, [onEdit, user.id]);
+  
+  const handleDeleteClick = useCallback(() => {
+    if (confirm('Are you sure you want to delete this user?')) {
+      onDelete?.(user.id);
+    }
+  }, [onDelete, user.id]);
+  
+  // Early returns for loading/error states
+  if (!user) {
+    return <UserProfileSkeleton />;
+  }
+  
+  // Main render logic
+  return (
+    <Card className="user-profile-card">
+      <CardHeader>
+        <UserAvatar 
+          src={user.avatar} 
+          alt={`${user.name}'s profile picture`}
+          size="large"
+        />
+        <UserBasicInfo user={user} />
+      </CardHeader>
+      
+      {isExpanded && (
+        <CardContent>
+          <UserDetailedInfo user={user} />
+        </CardContent>
+      )}
+      
+      <CardFooter>
+        <Button 
+          variant="ghost" 
+          onClick={handleToggleExpanded}
+          aria-label={isExpanded ? 'Collapse profile' : 'Expand profile'}
+        >
+          {isExpanded ? 'Show Less' : 'Show More'}
+        </Button>
+        
+        {showEditButton && hasPermission('edit_users') && (
+          <Button onClick={handleEditClick}>
+            Edit Profile
+          </Button>
+        )}
+        
+        {hasPermission('delete_users') && (
+          <Button 
+            variant="destructive" 
+            onClick={handleDeleteClick}
+          >
+            Delete User
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
+  );
+};
+```
+
+### CSS and Styling
+
+#### ✅ Good Examples
+```css
+/* Clear, semantic class names */
+.user-profile-card {
+  @apply bg-white rounded-lg shadow-md p-6 transition-all duration-200;
+}
+
+.user-profile-card__header {
+  @apply flex items-center space-x-4 mb-4;
+}
+
+.user-profile-card__avatar {
+  @apply w-16 h-16 rounded-full object-cover border-2 border-gray-200;
+}
+
+.user-profile-card__info {
+  @apply flex-1;
+}
+
+.user-profile-card__name {
+  @apply text-xl font-semibold text-gray-900 mb-1;
+}
+
+.user-profile-card__role {
+  @apply text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded;
+}
+
+/* State-based classes */
+.user-profile-card--expanded {
+  @apply shadow-lg;
+}
+
+.user-profile-card--loading {
+  @apply animate-pulse;
+}
+```
+
+#### ❌ Bad Examples
+```css
+/* Cryptic, meaningless class names */
+.card1 {
+  @apply bg-white p-4;
+}
+
+.hdr {
+  @apply flex;
+}
+
+.img1 {
+  @apply w-16 h-16;
+}
+
+/* Generic, non-descriptive names */
+.container {
+  @apply p-4;
+}
+
+.item {
+  @apply mb-2;
+}
+```
+
+## Documentation and Comments
+
+### Inline Comments
+
+#### ✅ Good Examples
+```typescript
+// Calculate compound interest with monthly compounding
+const calculateCompoundInterest = (
+  principal: number,
+  annualRate: number,
+  years: number
+): number => {
+  const monthlyRate = annualRate / 12;
+  const numberOfPayments = years * 12;
+  
+  // Using the compound interest formula: A = P(1 + r/n)^(nt)
+  return principal * Math.pow(1 + monthlyRate, numberOfPayments);
+};
+
+// Complex business logic that requires explanation
+const determineUserAccessLevel = (user: User): AccessLevel => {
+  // Premium users get full access regardless of account age
+  if (user.subscription === 'premium') {
+    return AccessLevel.FULL;
+  }
+  
+  // New users (< 30 days) have limited access to prevent abuse
+  const accountAgeInDays = getDaysSinceRegistration(user.createdAt);
+  if (accountAgeInDays < 30) {
+    return AccessLevel.LIMITED;
+  }
+  
+  // Regular users with good standing get standard access
+  return user.hasViolations ? AccessLevel.RESTRICTED : AccessLevel.STANDARD;
+};
+```
+
+#### ❌ Bad Examples
+```typescript
+// Obvious or redundant comments
+const age = 25; // Set age to 25
+const name = user.name; // Get user name
+
+// Comments that don't add value
+const result = calculate(); // Calculate result
+if (isValid) { // If valid
+  process(); // Process
+}
+
+// Outdated or misleading comments
+// TODO: Fix this later (comment from 2 years ago)
+const processData = (data: any) => {
+  // This function adds two numbers (but it actually processes user data)
+  return data.map(item => transform(item));
+};
+```
+
+### Function and Class Documentation
+
+#### ✅ Good Examples
+```typescript
+/**
+ * Processes user payment using the specified payment method
+ * 
+ * @param userId - The unique identifier of the user making the payment
+ * @param amount - The payment amount in cents (e.g., 1000 = $10.00)
+ * @param paymentMethod - The payment method to use (card, paypal, etc.)
+ * @param options - Additional payment processing options
+ * @returns Promise that resolves to payment result with transaction details
+ * 
+ * @throws {PaymentError} When payment processing fails
+ * @throws {ValidationError} When input parameters are invalid
+ * 
+ * @example
+ * ```typescript
+ * const result = await processPayment('user123', 2500, 'card', {
+ *   saveCard: true,
+ *   sendReceipt: true
+ * });
+ * 
+ * if (result.success) {
+ *   console.log('Payment processed:', result.transactionId);
+ * }
+ * ```
+ */
+async function processPayment(
+  userId: string,
+  amount: number,
+  paymentMethod: PaymentMethod,
+  options: PaymentOptions = {}
+): Promise<PaymentResult> {
+  // Implementation...
+}
+
+/**
+ * Custom hook for managing user authentication state
+ * 
+ * Provides authentication status, user data, and auth-related actions.
+ * Automatically handles token refresh and logout on token expiration.
+ * 
+ * @returns Object containing auth state and methods
+ * 
+ * @example
+ * ```typescript
+ * const { user, isAuthenticated, login, logout } = useAuth();
+ * 
+ * if (!isAuthenticated) {
+ *   return <LoginForm onLogin={login} />;
+ * }
+ * 
+ * return <Dashboard user={user} onLogout={logout} />;
+ * ```
+ */
+export const useAuth = () => {
+  // Implementation...
+};
+```
+
+### README and Documentation Files
+
+#### ✅ Good Examples
+```markdown
+# User Management Service
+
+A comprehensive service for handling user authentication, profile management, and access control.
+
+## Features
+
+- 🔐 Secure authentication with JWT tokens
+- 👤 User profile management
+- 🛡️ Role-based access control
+- 📧 Email verification and password reset
+- 🔄 Automatic token refresh
+
+## Quick Start
+
+```typescript
+import { UserService } from './services/user.service';
+
+const userService = new UserService();
+
+// Authenticate user
+const result = await userService.authenticate({
+  email: 'user@example.com',
+  password: 'securePassword123'
+});
+
+if (result.success) {
+  console.log('Welcome,', result.user.name);
+}
+```
+
+## API Reference
+
+### `authenticate(credentials: LoginCredentials): Promise<AuthResult>`
+
+Authenticates a user with email and password.
+
+**Parameters:**
+- `credentials.email` (string) - User's email address
+- `credentials.password` (string) - User's password
+
+**Returns:**
+- `AuthResult` - Object containing success status, user data, and auth token
+
+**Example:**
+```typescript
+const result = await userService.authenticate({
+  email: 'john@example.com',
+  password: 'myPassword123'
+});
+```
+```
+
+## Error Handling and Validation
+
+### Clear Error Messages
+
+#### ✅ Good Examples
+```typescript
+// Descriptive error classes
+class ValidationError extends Error {
+  constructor(
+    message: string,
+    public field: string,
+    public code: string
+  ) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+// Clear error handling with context
+const validateUserInput = (userData: UserInput): ValidationResult => {
+  const errors: ValidationError[] = [];
+  
+  if (!userData.email || !isValidEmail(userData.email)) {
+    errors.push(new ValidationError(
+      'Please provide a valid email address',
+      'email',
+      'INVALID_EMAIL'
+    ));
+  }
+  
+  if (!userData.password || userData.password.length < 8) {
+    errors.push(new ValidationError(
+      'Password must be at least 8 characters long',
+      'password',
+      'PASSWORD_TOO_SHORT'
+    ));
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+// User-friendly error messages
+const handleApiError = (error: ApiError): string => {
+  switch (error.code) {
+    case 'USER_NOT_FOUND':
+      return 'We couldn\'t find an account with that email address.';
+    case 'INVALID_CREDENTIALS':
+      return 'The email or password you entered is incorrect.';
+    case 'ACCOUNT_LOCKED':
+      return 'Your account has been temporarily locked. Please try again later.';
+    case 'NETWORK_ERROR':
+      return 'Unable to connect to our servers. Please check your internet connection.';
+    default:
+      return 'An unexpected error occurred. Please try again.';
+  }
+};
+```
+
+## Code Organization and Structure
+
+### File Organization
+
+#### ✅ Good Structure
+```
+src/
+├── components/
+│   ├── common/           # Reusable UI components
+│   │   ├── Button/
+│   │   ├── Input/
+│   │   └── Modal/
+│   ├── features/         # Feature-specific components
+│   │   ├── authentication/
+│   │   ├── user-profile/
+│   │   └── dashboard/
+│   └── layout/           # Layout components
+│       ├── Header/
+│       ├── Sidebar/
+│       └── Footer/
+├── services/             # Business logic and API calls
+│   ├── api/
+│   ├── authentication/
+│   └── user-management/
+├── hooks/                # Custom React hooks
+│   ├── useAuth.ts
+│   ├── useLocalStorage.ts
+│   └── useApi.ts
+├── utils/                # Pure utility functions
+│   ├── validation.ts
+│   ├── formatting.ts
+│   └── constants.ts
+├── types/                # TypeScript type definitions
+│   ├── user.types.ts
+│   ├── api.types.ts
+│   └── common.types.ts
+└── styles/               # Global styles and themes
+    ├── globals.css
+    ├── components.css
+    └── utilities.css
+```
+
+### Import Organization
+
+#### ✅ Good Examples
+```typescript
+// External library imports first
+import React, { useState, useCallback, useEffect } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { z } from 'zod';
+
+// Internal imports grouped by type
+import { Button } from '@/components/common/Button';
+import { Input } from '@/components/common/Input';
+import { Modal } from '@/components/common/Modal';
+
+import { useAuth } from '@/hooks/useAuth';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+
+import { userService } from '@/services/user-management/user.service';
+import { validateEmail, formatPhoneNumber } from '@/utils/validation';
+
+import type { User, UserUpdateData } from '@/types/user.types';
+import type { ApiResponse } from '@/types/api.types';
+
+// Relative imports last
+import './UserProfile.css';
+```
+
+## Performance and Readability
+
+### Avoid Deeply Nested Code
+
+#### ✅ Good Examples
+```typescript
+// Use early returns to reduce nesting
+const processUserData = (userData: UserData): ProcessedUser => {
+  if (!userData) {
+    throw new Error('User data is required');
+  }
+  
+  if (!userData.email) {
+    throw new ValidationError('Email is required');
+  }
+  
+  if (!isValidEmail(userData.email)) {
+    throw new ValidationError('Invalid email format');
+  }
+  
+  // Main processing logic at the top level
+  const processedUser = {
+    id: generateUserId(),
+    email: userData.email.toLowerCase(),
+    name: formatUserName(userData.name),
+    createdAt: new Date().toISOString()
+  };
+  
+  return processedUser;
+};
+
+// Extract complex conditions into well-named functions
+const canUserAccessFeature = (user: User, feature: Feature): boolean => {
+  return hasRequiredRole(user, feature) && 
+         hasActiveSubscription(user) && 
+         !isFeatureDisabled(feature);
+};
+
+const hasRequiredRole = (user: User, feature: Feature): boolean => {
+  return user.roles.some(role => feature.allowedRoles.includes(role));
+};
+
+const hasActiveSubscription = (user: User): boolean => {
+  return user.subscription && 
+         user.subscription.status === 'active' && 
+         new Date(user.subscription.expiresAt) > new Date();
+};
+```
+
+#### ❌ Bad Examples
+```typescript
+// Deeply nested, hard to follow
+const processUserData = (userData: UserData): ProcessedUser => {
+  if (userData) {
+    if (userData.email) {
+      if (isValidEmail(userData.email)) {
+        if (userData.name) {
+          if (userData.name.length > 0) {
+            // Actual processing buried deep in nesting
+            return {
+              id: generateUserId(),
+              email: userData.email.toLowerCase(),
+              name: formatUserName(userData.name),
+              createdAt: new Date().toISOString()
+            };
+          } else {
+            throw new Error('Name cannot be empty');
+          }
+        } else {
+          throw new Error('Name is required');
+        }
+      } else {
+        throw new Error('Invalid email');
+      }
+    } else {
+      throw new Error('Email is required');
+    }
+  } else {
+    throw new Error('User data is required');
+  }
+};
+```
+
+## Consistency Rules
+
+### Naming Consistency
+- Use the same terminology throughout the codebase
+- Maintain consistent verb tenses (get/fetch, create/add, update/modify)
+- Follow established patterns for similar functionality
+
+### Code Style Consistency
+- Use consistent indentation (2 or 4 spaces, not mixed)
+- Maintain consistent bracket placement
+- Use consistent quote styles (single or double, not mixed)
+- Apply consistent spacing around operators and keywords
+
+### Pattern Consistency
+- Use the same patterns for similar operations
+- Maintain consistent error handling approaches
+- Follow the same component structure patterns
+- Use consistent state management patterns
+
+## Readability Checklist
+
+Before submitting any code, ensure:
+
+### Naming
+- [ ] All variables, functions, and classes have descriptive names
+- [ ] Boolean variables start with is/has/can/should
+- [ ] Functions use verb-noun combinations
+- [ ] Constants use SCREAMING_SNAKE_CASE
+- [ ] No abbreviations or cryptic names
+
+### Structure
+- [ ] Functions are small and focused (< 50 lines)
+- [ ] Components have clear, single responsibilities
+- [ ] Code is organized logically with related items grouped
+- [ ] Imports are organized and grouped appropriately
+
+### Documentation
+- [ ] Complex logic has explanatory comments
+- [ ] Public APIs have comprehensive documentation
+- [ ] README files are up-to-date and helpful
+- [ ] Code is self-documenting where possible
+
+### Formatting
+- [ ] Consistent indentation throughout
+- [ ] Proper spacing around operators and keywords
+- [ ] Logical line breaks and grouping
+- [ ] No trailing whitespace or unnecessary blank lines
+
+### Error Handling
+- [ ] Clear, user-friendly error messages
+- [ ] Proper error types and codes
+- [ ] Comprehensive error handling coverage
+- [ ] Graceful degradation where appropriate
+
+## Tools and Automation
+
+### Recommended Tools
+- **ESLint**: For code quality and consistency
+- **Prettier**: For automatic code formatting
+- **TypeScript**: For type safety and better IntelliSense
+- **JSDoc**: For comprehensive API documentation
+- **Husky**: For pre-commit hooks to enforce standards
+
+### IDE Configuration
+- Enable format on save
+- Configure consistent tab/space settings
+- Use consistent line ending settings
+- Enable linting and error highlighting
+
+Remember: Readable code is not just about following rules—it's about making your code a joy to work with for yourself and your team. Every line of code is read many more times than it's written, so invest in readability from the start.

@@ -1,0 +1,93 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Enforce Correct AI Usage
+
+You must check whether the User's input follows the guidelines below. If it does NOT follow them, throw a WARNING to the user and get EXPLICIT permission to continue with incorrect AI usage.
+
+"Your input does NOT follow guidelines, are you sure you want to continue?"
+Accept / Decline
+
+On "Decline", end the conversation.
+On "Accept", continue the conversation.
+
+## Rule Details
+
+This rule ensures that users provide sufficient context and clarity in their requests to get optimal results from the AI assistant while fostering learning and architectural understanding.
+
+## Implementation Notes
+
+The AI should:
+
+1. Evaluate if the user's input provides sufficient context and follows best practices
+2. If not, warn the user and require explicit confirmation to continue
+3. Apply these guidelines to all interactions
+4. Encourage users to demonstrate their understanding of the problem
+5. Prompt users to think through potential solutions before asking for complete implementations
+
+## AI Usage Guidelines
+
+### Feature Implementation Requests
+- **Do not** blindly ask AI to implement a feature without details
+  - ❌ Bad: "implement chat feature"
+  - ❌ Bad: "create a user authentication system"
+  - ✅ Good: "I would like to implement a chat feature, such that the chats are stored in collections 'chat_messages' with the schema 'chat_id' (string), 'content' (string), 'created_at' (epoch), 'user_id' (string)"
+  - ✅ Good: "I need help implementing JWT-based authentication that follows our microservice architecture. Our current auth flow uses X pattern and I need something similar for the admin dashboard."
+
+### Error Fixing
+- **Do not** blindly paste an error string and ask AI to fix the error
+  - ❌ Bad: "'hydration error' fix this"
+  - ❌ Bad: "Getting 'Cannot read property of undefined' error, make it work"
+  - ✅ Good: "I'm facing 'hydration error' in home page, can you please review my code and identify if there are any parts of the code that may be causing this? Do not take any action, I just want to understand the issue first."
+  - ✅ Good: "I'm getting this error: 'TypeError: Cannot read property 'data' of undefined' in my fetchUserData function. I think it might be happening when the API call fails but I'm not handling the error correctly. Here's my current implementation and how it fits into our error handling pattern:"
+
+### Reference Code
+- **Do not** paste reference code without explaining what to do with it
+  - ❌ Bad: *pastes a block of code with no context*
+  - ❌ Bad: "Make this better"
+  - ✅ Good: "Here's some reference code for how authentication is handled in our app. Could you adapt this approach to implement a similar system for our admin dashboard?"
+  - ✅ Good: "This is our current implementation of the product listing component. I need to add sorting functionality while maintaining our existing filtering logic. Our architecture separates data fetching from UI rendering."
+
+### Code Reviews
+- **Provide** specific aspects you want reviewed or focus areas
+  - ❌ Bad: "review this code"
+  - ❌ Bad: "Is there anything wrong with this?"
+  - ✅ Good: "Could you review this React component for performance issues, particularly focusing on unnecessary re-renders and any memory leaks?"
+  - ✅ Good: "Please review this authentication middleware for security vulnerabilities and alignment with our zero-trust architecture principles."
+
+### Architecture Questions
+- **Do not** ask for architecture decisions without providing context about your system
+  - ❌ Bad: "What's the best way to structure a database for a social media app?"
+  - ❌ Bad: "Should I use microservices?"
+  - ✅ Good: "We currently have a monolithic Node.js app that's becoming hard to maintain. Given our scale (approximately 10K DAU) and our need for rapid feature development, would microservices be appropriate? Our team has 6 backend developers."
+  - ✅ Good: "Our current architecture uses MongoDB for user data and PostgreSQL for transactional data. I'm considering adding Redis for caching frequently accessed content. Does this align with our performance requirements?"
+
+### Debugging Assistance
+- **Do not** ask AI to debug without your own investigation first
+  - ❌ Bad: "My app is crashing, fix it"
+  - ❌ Bad: "This doesn't work, why?"
+  - ✅ Good: "I've narrowed down a memory leak to this component. I've checked for event listeners and verified state management, but still can't find the issue. Here's what I've tried so far..."
+  - ✅ Good: "After profiling my API endpoint, I found that this database query is taking 5 seconds to complete when it should take milliseconds. I've checked the indexes and query plan. Here's my analysis and what I think might be wrong:"
+
+### Learning and Understanding
+- **Do not** use AI as a replacement for understanding core concepts
+  - ❌ Bad: "How do promises work in JavaScript? Just give me code to copy."
+  - ❌ Bad: "Write tests for this component"
+  - ✅ Good: "I understand that Promises handle asynchronous operations, but I'm struggling with error handling in Promise chains. Could you explain how errors propagate through then/catch blocks with examples?"
+  - ✅ Good: "I'm learning TDD for our project. Based on our testing architecture using Jest and React Testing Library, could you guide me through writing tests for this component? I'll write them myself but need direction on test cases."
+
+### Refactoring Requests
+- **Do not** ask for refactoring without explaining the goals or problems
+  - ❌ Bad: "Refactor this code"
+  - ❌ Bad: "Make this code better"
+  - ✅ Good: "This function has grown to over 200 lines and handles multiple responsibilities. Following our clean code guidelines, I'd like to refactor it to be more modular and testable. Could you suggest how I might break it down?"
+  - ✅ Good: "We're experiencing performance issues with this component which renders a large list. I need to refactor it to use virtualization and memoization while maintaining the existing business logic."
+
+### API Integration
+- **Do not** request integration code without providing API documentation or specifications
+  - ❌ Bad: "Integrate Stripe into my app"
+  - ❌ Bad: "Write code to use Google Maps API"
+  - ✅ Good: "I'm integrating with Stripe's Payment Intent API using their Node.js SDK. Here's our current payment flow and documentation links. I need help implementing the server-side confirmation endpoint that follows our error handling patterns."
+  - ✅ Good: "We need to integrate the Google Maps Geocoding API into our address validation system. Here's our API abstraction layer pattern and the specific endpoints we need to call. Can you help me implement this integration?"

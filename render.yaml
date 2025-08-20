@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: identity-reconciliation-api
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: identity-reconciliation-db
+          property: connectionString
+    healthCheckPath: /health
+    
+databases:
+  - name: identity-reconciliation-db
+    databaseName: identity_reconciliation
+    user: bitespeed_user
+    plan: free
+    region: oregon

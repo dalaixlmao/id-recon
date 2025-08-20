@@ -1,0 +1,280 @@
+# ================================
+# SECRETS AND CRITICAL FILES
+# ================================
+
+# Environment variables and configuration
+.env
+.env.*
+.env.local
+.env.development
+.env.development.local
+.env.staging
+.env.staging.local
+.env.production
+.env.production.local
+.env.test
+.env.test.local
+env.production
+env.development
+env.staging
+config.json
+config.production.json
+
+# API Keys and Secrets
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cert
+secrets/
+secrets.json
+config/secrets/
+.secrets/
+api_keys.json
+service-account-key.json
+
+# Database files and credentials
+*.db
+*.sqlite
+*.sqlite3
+dev.db*
+test.db*
+database.url
+database.json
+db_credentials.json
+migration_backup/
+
+# Authentication and Security
+auth_token
+access_token
+refresh_token
+jwt_secret
+session_secret
+private_key
+public_key
+oauth_credentials
+firebase-adminsdk-*.json
+
+# Docker secrets
+docker-compose.override.yml
+.dockerenv
+docker_secrets/
+
+# Cloud provider credentials
+.aws/
+.gcp/
+.azure/
+aws-credentials
+gcp-credentials.json
+azure-credentials.json
+
+# ================================
+# DEPENDENCIES AND PACKAGES
+# ================================
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json.backup
+
+# Yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+.yarn-integrity
+
+# Other package managers
+jspm_packages/
+bower_components/
+
+# ================================
+# BUILD AND RUNTIME FILES
+# ================================
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ================================
+# DEVELOPMENT TOOLS
+# ================================
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+.metadata/
+
+# Debug and profiling
+.nyc_output/
+coverage/
+*.lcov
+.coverage/
+lib-cov/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.npm/
+.yarn-cache/
+
+# ================================
+# TESTING AND CI/CD
+# ================================
+
+# Test files and coverage
+*.tgz
+test-results/
+coverage-reports/
+allure-results/
+allure-report/
+jest-results/
+
+# Temporary test files
+.temp/
+.tmp/
+temp/
+tmp/
+
+# ================================
+# OPERATING SYSTEM FILES
+# ================================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+Icon?
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.nfs*
+
+# ================================
+# BACKUP AND TEMPORARY FILES
+# ================================
+
+# Backup files
+*.backup
+*.bak
+*.old
+*.orig
+*.tmp
+*_backup
+*_old
+
+# Archive files (unless needed)
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+*.tar.bz2
+
+# Editor temporary files
+.#*
+#*#
+.*.swp
+.*.swo
+
+# ================================
+# DOCUMENTATION DRAFTS
+# ================================
+
+# Draft documentation
+NOTES.md
+TODO_PRIVATE.md
+SCRATCH.md
+draft_*
+notes/
+drafts/
+
+# ================================
+# MONITORING AND ANALYTICS
+# ================================
+
+# Monitoring data
+monitoring/
+metrics/
+analytics/
+performance_logs/
+error_reports/
+
+# ================================
+# DEPLOYMENT SPECIFIC
+# ================================
+
+# Local development overrides
+docker-compose.local.yml
+render.local.yaml
+kubernetes.local.yml
+
+# Deployment keys and certificates
+deployment_key
+ssl_certificates/
+tls/
+
+# ================================
+# PROJECT SPECIFIC
+# ================================
+
+# Database dumps and backups
+*.sql.gz
+*.dump
+database_backup/
+db_exports/
+
+# API documentation generated files
+docs/generated/
+api-docs/generated/
+
+# Performance testing
+artillery_reports/
+load_test_results/
+benchmark_results/
